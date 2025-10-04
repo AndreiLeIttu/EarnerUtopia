@@ -19,63 +19,43 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.aospi.earnerutopia.ui.theme.EarnerUtopiaTheme
 import com.aospi.earnerutopia.ui.theme.Uber
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import com.aospi.earnerutopia.ui.theme.StartScreen
+import androidx.navigation.compose.composable
+
+enum class EarnerUtopia() {
+    Start,
+    Plan,
+    Schedule
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val db = DatabaseHelper.openDatabase(this, "database.db")
-        val cursor = db.rawQuery("SELECT earner_id, rating FROM earners", null)
-        while (cursor.moveToNext()) {
-            val id = cursor.getString(0)
-            val rating = cursor.getDouble(1)
-            Log.d("DB_RESULT", "Earner: $id, $rating")
-            if (id == null) break
-        }
-        cursor.close()
-        db.close()
+//        val db = DatabaseHelper.openDatabase(this, "database.db")
+//        val cursor = db.rawQuery("SELECT earner_id, rating FROM earners", null)
+//        while (cursor.moveToNext()) {
+//            val id = cursor.getString(0)
+//            val rating = cursor.getDouble(1)
+//            Log.d("DB_RESULT", "Earner: $id, $rating")
+//            if (id == null) break
+//        }
+//        cursor.close()
+//        db.close()
 
         setContent {
             EarnerUtopiaTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
+                    EarnerUtopiaApp(
                         name = "Rider",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth().fillMaxHeight(),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-        ) {
-        Text(
-            text = "Welcome, $name!",
-            modifier = modifier,
-            fontFamily = Uber,
-            fontWeight = FontWeight.Bold,
-            fontSize = 40.sp,
-        )
-        Text(
-            fontFamily = Uber,
-            fontWeight = FontWeight.Normal,
-            text = "Are you ready for a new day?",
-            fontSize = 30.sp,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    EarnerUtopiaTheme {
-        Greeting("Android")
     }
 }
