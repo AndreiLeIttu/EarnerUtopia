@@ -3,6 +3,7 @@ package com.aospi.earnerutopia.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,6 +14,7 @@ import com.aospi.earnerutopia.ui.theme.Uber
 @Composable
 fun StartScreen(
     modifier: Modifier = Modifier,
+    onNextButtonClicked: () -> Unit,
     name: String,
 ) {
     Column(
@@ -33,5 +35,8 @@ fun StartScreen(
             text = "Are you ready for a new day?",
             fontSize = 30.sp,
         )
+        Button(onClick = onNextButtonClicked) {
+            Text("Go to plan")
+        }
     }
 }
