@@ -1,4 +1,4 @@
-package com.aospi.earnerutopia.ui.theme
+package com.aospi.earnerutopia.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.aospi.earnerutopia.ui.theme.Uber
 
 @Composable
 fun StartScreen(
