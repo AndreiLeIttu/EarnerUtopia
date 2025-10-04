@@ -1,0 +1,153 @@
+sheet_name,column_name,description,example_value
+Each dataset in the sheet is described below.,,,
+earners,,"Profiles of all earners (drivers and couriers). Contains vehicle info, type, rating, and home city.",
+riders,,Profiles of riders (passengers using rides). Contains trip frequency propensity and preferences.,
+customers,,Profiles of eaters (Uber Eats customers). Contains order frequency propensity and payment info.,
+merchants,,Catalog of restaurants partnered with Eats. Includes location (lat/lon and hex).,
+rides_trips,,"Individual rides trips (cars only). Contains fares, surge, tips, geo-blurred pickup/dropoff.",
+eats_orders,,"Individual Uber Eats orders. Contains basket values, delivery fees, tips, and courier info.",
+jobs_like,,Unified job records (rides + eats). Mimics internal job schema for practice joins.,
+earnings_daily,,Daily earnings aggregates per earner. Combines rides and eats.,
+incentives_weekly,,Weekly quest-style incentive programs for rides and eats earners.,
+surge_by_hour,,Hourly surge multipliers per city. Used for rides fare pricing.,
+cancellation_rates,,Synthetic cancellation rates per pickup hex and city.,
+heatmap,,Demand/earnings heatmap predictions per hex and city.,
+weather_daily,,Synthetic weather conditions per city per day.,
+How each table interrelates and how they can be joined for analysis is described below.,,,
+_JOINS,rides_trips.driver_id ↔ earners.earner_id,Join drivers to earner profiles (type=driver).,
+_JOINS,eats_orders.courier_id ↔ earners.earner_id,Join couriers to earner profiles (type=courier).,
+_JOINS,rides_trips.rider_id ↔ riders.rider_id,Join rides trips to rider profiles.,
+_JOINS,eats_orders.customer_id ↔ customers.customer_id,Join eats orders to eater profiles.,
+_JOINS,eats_orders.merchant_id ↔ merchants.merchant_id,Join deliveries to restaurants.,
+_JOINS,jobs_like.job_uuid ↔ rides_trips.ride_id / eats_orders.order_id,Map unified jobs to specific marketplace tables.,
+_JOINS,*_trips/orders.pickup_hex_id9 ↔ cancellation_rates.hexagon_id9 ↔ heatmap.msg.predictions.hexagon_id_9,Link geo areas across context tables.,
+_JOINS,city_id + date,Join to weather_daily and aggregate with earnings_daily.,
+The following rows describe each column in each dataset and provide examples.,,,
+earners,earner_id,Anonymized unique identifier for a driver or courier.,E10000
+earners,earner_type,Role of the earner: driver (rides) or courier (eats).,driver
+earners,vehicle_type,Vehicle operated by the earner. Drivers: car; Couriers: bike/scooter/car.,car
+earners,fuel_type,EV / hybrid / gas. Couriers' EV denotes e-bike/e-scooter.,hybrid
+earners,is_ev,True if the earner's vehicle is electric (drivers or couriers).,False
+earners,experience_months,Months active on the platform (approximate).,72
+earners,rating,Average anonymized rating (1–5).,4.79
+earners,status,Current platform status snapshot: online/offline/engaged.,offline
+earners,home_city_id,Home city (joins to city_id columns elsewhere).,4
+riders,rider_id,Anonymized rider (consumer of rides).,R2000
+riders,trip_frequency,"Typical rides per week (propensity, not computed).",12
+riders,preferred_product,Preferred rides product (UberX/UberPool/UberBlack/UberGreen).,UberPool
+riders,payment_type,Masked payment type used most often.,wallet
+customers,customer_id,Anonymized eater (consumer of food delivery).,C3000
+customers,order_frequency,Typical orders per week (propensity).,2
+customers,payment_type,Masked payment type used most often.,card
+merchants,merchant_id,Anonymized restaurant identifier.,M101
+merchants,city_id,City where merchant is located.,1
+merchants,lat,Blurred latitude of merchant (≈300m).,52.36991162011873
+merchants,lon,Blurred longitude of merchant (≈300m).,4.889973101201265
+merchants,hex_id9,Synthetic H3-like hex at res 9 for the merchant location.,89fb0333e75a7e5
+rides_trips,ride_id,Unique trip identifier (also appears as job_uuid in jobs_like).,58e20c15-9b2e-4458-ac00-107bcf9564cd
+rides_trips,driver_id,"Earner driving the car (joins to earners.earner_id, type=driver).",E10111
+rides_trips,rider_id,Rider who requested the trip (joins to riders.rider_id).,R2231
+rides_trips,city_id,City where the trip occurred.,3
+rides_trips,product,UberX/UberPool/UberBlack/UberGreen (Green only if is_ev=True).,UberX
+rides_trips,vehicle_type,Always 'car' for rides.,car
+rides_trips,is_ev,True if the driver's vehicle is EV.,False
+rides_trips,start_time,Trip start timestamp (localized string).,2023-01-13 23:50:00
+rides_trips,end_time,Trip end timestamp (localized string).,2023-01-14 00:10:00
+rides_trips,pickup_lat,Blurred pickup latitude (≈300m).,52.09319
+rides_trips,pickup_lon,Blurred pickup longitude (≈300m).,5.17695
+rides_trips,pickup_hex_id9,Synthetic H3-like hex for pickup area.,89b5443252677be
+rides_trips,drop_lat,Blurred drop-off latitude.,52.08017
+rides_trips,drop_lon,Blurred drop-off longitude.,5.16125
+rides_trips,drop_hex_id9,Synthetic H3-like hex for drop-off area.,896326c3e14b5c2
+rides_trips,distance_km,Estimated trip distance in kilometers.,9.0
+rides_trips,duration_mins,Trip duration in minutes.,20
+rides_trips,surge_multiplier,Applied surge at trip start hour and city.,1.22
+rides_trips,fare_amount,Gross fare paid by the rider (EUR).,17.54
+rides_trips,uber_fee,Approximate Uber service fee (25% of fare).,4.38
+rides_trips,net_earnings,Driver earnings before tips (fare - fee).,13.16
+rides_trips,tips,Tips paid by rider (EUR).,0.0
+rides_trips,payment_type,Masked rider payment type.,cash
+eats_orders,order_id,Unique order identifier (also appears as job_uuid in jobs_like).,b9df6e21-db8c-4d99-8596-67d0b3ac1f7c
+eats_orders,courier_id,"Courier delivering the order (joins to earners.earner_id, type=courier).",E10249
+eats_orders,customer_id,Eater placing the order (joins to customers.customer_id).,C3215
+eats_orders,merchant_id,Restaurant preparing the order (joins to merchants.merchant_id).,M107
+eats_orders,city_id,City where the delivery occurred.,1
+eats_orders,vehicle_type,Courier vehicle (bike/scooter/car).,scooter
+eats_orders,is_ev,True if the courier vehicle is electric (e-bike/e-scooter/EV car).,True
+eats_orders,start_time,Pickup/accept time for the delivery.,2023-04-22 13:22:00
+eats_orders,end_time,Delivery completion time.,2023-04-22 13:53:00
+eats_orders,pickup_lat,Blurred restaurant latitude.,52.41501
+eats_orders,pickup_lon,Blurred restaurant longitude.,4.86718
+eats_orders,pickup_hex_id9,Synthetic H3-like hex for restaurant area.,8981b17f1018117
+eats_orders,drop_lat,Blurred customer latitude.,52.35951
+eats_orders,drop_lon,Blurred customer longitude.,4.903
+eats_orders,drop_hex_id9,Synthetic H3-like hex for customer area.,899a29fd4706501
+eats_orders,distance_km,Estimated delivery distance in kilometers.,3.52
+eats_orders,duration_mins,Delivery duration in minutes.,31
+eats_orders,basket_value_eur,Order basket value (EUR).,20.69
+eats_orders,delivery_fee_eur,Delivery fee paid by eater (EUR).,3.81
+eats_orders,tip_eur,Tip from eater (EUR).,0
+eats_orders,net_earnings,Courier earnings from fee + tip (EUR).,3.81
+eats_orders,payment_type,Masked eater payment type.,card
+jobs_like,job_uuid,ID of the underlying trip/order (ride_id/order_id).,58e20c15-9b2e-4458-ac00-107bcf9564cd
+jobs_like,marketplace,ridesharing or eats.,ridesharing
+jobs_like,datestr,Job creation date (YYYY-MM-DD).,2023-01-13
+jobs_like,acceptor_uuid,Earner who accepted (earners.earner_id).,E10111
+jobs_like,requester_uuid,Rider or customer (rider_id/customer_id).,R2231
+jobs_like,begin_checkpoint.actual_location_hexagon_id9,Pickup hex for job begin.,89b5443252677be
+jobs_like,begin_checkpoint.actual_location_latitude,Pickup latitude (blurred).,52.09319
+jobs_like,begin_checkpoint.actual_location_longitude,Pickup longitude (blurred).,5.17695
+jobs_like,begin_checkpoint.city_id,Pickup city id.,3
+jobs_like,begin_checkpoint.ata_utc,Arrival/start timestamp (ISO).,2023-01-13T23:50:00
+jobs_like,end_checkpoint.actual_location_hexagon_id9,Drop-off hex for job end.,896326c3e14b5c2
+jobs_like,end_checkpoint.actual_location_latitude,Drop-off latitude (blurred).,52.08017
+jobs_like,end_checkpoint.actual_location_longitude,Drop-off longitude (blurred).,5.16125
+jobs_like,end_checkpoint.city_id,Drop-off city id.,3
+jobs_like,end_checkpoint.ata_utc,Completion timestamp (ISO).,2023-01-14T00:10:00
+jobs_like,global_product_name,Product label (Eats/UberX/UberPool/UberBlack/UberGreen).,UberX
+jobs_like,product_type_name,Same as product label (for convenience).,UberX
+jobs_like,fulfillment_job_status,Job state; 'completed' in this mock.,completed
+earnings_daily,earner_id,Driver/courier (joins to earners).,E10000
+earnings_daily,city_id,City of activity for that day.,4
+earnings_daily,date,Date of the activity (YYYY-MM-DD).,2023-01-12
+earnings_daily,trips_count,Rides completed that day by the earner.,1
+earnings_daily,rides_distance_km,Total ride distance (km).,8.09
+earnings_daily,rides_duration_mins,Total ride duration (mins).,34
+earnings_daily,rides_gross_fare,Sum of ride fares (EUR).,12.57
+earnings_daily,rides_net_earnings,Sum of driver ride earnings (EUR).,9.43
+earnings_daily,rides_tips,Sum of ride tips (EUR).,0
+earnings_daily,orders_count,Eats orders delivered that day by the earner.,0
+earnings_daily,eats_distance_km,Total delivery distance (km).,0
+earnings_daily,eats_duration_mins,Total delivery duration (mins).,0
+earnings_daily,eats_delivery_fee,Sum of delivery fees earned (EUR).,0
+earnings_daily,eats_net_earnings,Sum of courier delivery earnings (EUR).,0
+earnings_daily,eats_tips,Sum of delivery tips (EUR).,0
+earnings_daily,total_jobs,trips_count + orders_count.,1
+earnings_daily,total_net_earnings,rides_net_earnings + eats_net_earnings.,9.43
+earnings_daily,total_tips,rides_tips + eats_tips.,0
+earnings_daily,week,"ISO week label (e.g., 2023-W07).",2023-W02
+incentives_weekly,earner_id,Driver/courier (joins to earners).,E10000
+incentives_weekly,week,"ISO week for the quest (e.g., 2023-W07).",2023-W02
+incentives_weekly,program,rides_quest or eats_quest.,rides_quest
+incentives_weekly,target_jobs,Quest target (jobs to complete to earn bonus).,25
+incentives_weekly,completed_jobs,Jobs completed by the earner in that week and program.,2
+incentives_weekly,achieved,Whether the earner met the target.,False
+incentives_weekly,bonus_eur,Bonus payout if achieved (EUR).,40
+surge_by_hour,city_id,City identifier.,1
+surge_by_hour,hour,Hour of day (0–23).,0
+surge_by_hour,surge_multiplier,Baseline surge multiplier for rides pricing.,0.97
+cancellation_rates,city_id,City identifier.,1
+cancellation_rates,hexagon_id9,Synthetic H3-like hex for pickup area.,89006b0cd89bafa
+cancellation_rates,job_count,Observed jobs in that area (rides+eats).,1
+cancellation_rates,cancellation_rate_pct,Synthetic cancellation percentage for the area.,3.19
+heatmap,msg.city_id,City identifier in the heatmap message.,1
+heatmap,msg.map_id,Heatmap map identifier.,map-1
+heatmap,msg.currency_code,Currency code (EUR).,EUR
+heatmap,msg.earnings_heatmap_type,Type of heatmap (supply_demand).,supply_demand
+heatmap,msg.predictions.hexagon_id_9,Hex keyed to pickup areas.,89006b0cd89bafa
+heatmap,msg.predictions.predicted_eph,Predicted earnings per hour for the hex (EUR/hr).,22.18
+heatmap,msg.predictions.predicted_std,Uncertainty of the eph prediction.,4.28
+heatmap,msg.predictions.in_final_heatmap,Boolean flag indicating inclusion in final map.,True
+weather_daily,date,Calendar date (YYYY-MM-DD).,2023-01-01
+weather_daily,city_id,City identifier.,1
+weather_daily,weather,Daily weather bucket: clear/rain/snow.,clear
