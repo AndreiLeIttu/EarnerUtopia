@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
+        /*
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         } else {
             startBubbleService()
         }
-
+        */
 //        val db = DatabaseHelper.openDatabase(this, "database.db")
 //        val cursor = db.rawQuery("SELECT earner_id, rating FROM earners", null)
 //        while (cursor.moveToNext()) {
@@ -69,9 +69,32 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        stopBubbleService()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (Settings.canDrawOverlays(this)) {
+            startBubbleService()
+        } else {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            overlayPermissionLauncher.launch(intent)
+        }
+    }
+
     private fun startBubbleService() {
         val intent = Intent(this, BubbleService::class.java)
         startService(intent)
+    }
+
+    private fun stopBubbleService() {
+        val intent = Intent(this, BubbleService::class.java)
+        stopService(intent)
     }
 
 }

@@ -2,12 +2,14 @@ package com.aospi.earnerutopia
 
 import android.animation.ValueAnimator
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import android.view.WindowManager
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -18,6 +20,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.isVisible
+import androidx.core.content.edit
 
 class BubbleService : Service() {
 
@@ -25,6 +28,7 @@ class BubbleService : Service() {
     private lateinit var bubbleView: View
     private val handler = Handler(Looper.getMainLooper())
     private var showMessage = false
+    private val timeoutSeconds = 2L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -42,7 +46,9 @@ class BubbleService : Service() {
         )
         params.gravity = Gravity.TOP or Gravity.START
 
-        params.y = 500
+        val (lastX, lastY) = getSavedBubblePosition()
+        params.x = lastX
+        params.y = lastY
 
         bubbleView = LayoutInflater.from(this).inflate(R.layout.bubble_layout, null)
         windowManager.addView(bubbleView, params)
@@ -53,7 +59,6 @@ class BubbleService : Service() {
         fun showTextPopup() {
             val metrics = Resources.getSystem().displayMetrics
             val screenWidth = metrics.widthPixels
-            val bubbleWidth = bubbleIcon.width
 
             bubbleContainer.removeView(bubbleText)
             val textParams = bubbleText.layoutParams as LinearLayout.LayoutParams
@@ -71,10 +76,8 @@ class BubbleService : Service() {
 
                 bubbleView.post {
                     bubbleView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-                    val totalWidth = bubbleView.measuredWidth
                     val circleWidth = bubbleIcon.width
 
-                    // new x so circle right edge aligns with screen
                     params.x = screenWidth - circleWidth
                     windowManager.updateViewLayout(bubbleView, params)
                 }
@@ -103,17 +106,34 @@ class BubbleService : Service() {
                     showTextPopup()
                 }
 
-                handler.postDelayed(this, 2 * 1000)
+                handler.postDelayed(this, timeoutSeconds * 1000)
             }
         })
 
         bubbleView.setOnTouchListener(BubbleTouchListener(params, windowManager, bubbleView))
+        /*
+        bubbleIcon.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(intent)
+            stopSelf()
+        }
+        */
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (::bubbleView.isInitialized) windowManager.removeView(bubbleView)
     }
+
+    private fun getSavedBubblePosition(): Pair<Int, Int> {
+        val prefs = getSharedPreferences("bubble_prefs", Context.MODE_PRIVATE)
+        val x = prefs.getInt("last_x", 0)
+        val y = prefs.getInt("last_y", 500)
+        return Pair(x, y)
+    }
+
 
     private class BubbleTouchListener(
         private val layoutParams: WindowManager.LayoutParams,
@@ -125,47 +145,80 @@ class BubbleService : Service() {
         private var initialY = 0
         private var touchX = 0f
         private var touchY = 0f
+        private var downTime: Long = 0
+        private var isDragging = false
+        private val dragThreshold = 200L
+
+        private fun saveBubblePosition(context: Context, x: Int, y: Int) {
+            val prefs = context.getSharedPreferences("bubble_prefs", Context.MODE_PRIVATE)
+            prefs.edit {
+                putInt("last_x", x)
+                    .putInt("last_y", y)
+            }
+        }
+
 
         override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-            if (event == null) return false
+            if (event == null || v == null) return false
 
             val metrics = Resources.getSystem().displayMetrics
             val screenWidth = metrics.widthPixels
             val screenHeight = metrics.heightPixels
 
-            val bubbleWidth = v?.width ?: 0
-            val bubbleHeight = v?.height ?: 0
+            val bubbleWidth = v.width.coerceAtLeast(1)
+            val bubbleHeight = v.height.coerceAtLeast(1)
 
-            when (event.action) {
+            when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = layoutParams.x
                     initialY = layoutParams.y
                     touchX = event.rawX
                     touchY = event.rawY
+                    downTime = System.currentTimeMillis()
+                    isDragging = false
                     return true
                 }
+
                 MotionEvent.ACTION_MOVE -> {
-                    layoutParams.x = initialX + (event.rawX - touchX).toInt()
-                    layoutParams.y = initialY + (event.rawY - touchY).toInt()
-                    layoutParams.x = layoutParams.x.coerceIn(0, screenWidth - bubbleWidth)
-                    layoutParams.y = layoutParams.y.coerceIn(0, screenHeight - bubbleHeight)
-                    windowManager.updateViewLayout(bubbleView, layoutParams)
-                    return true
-                }
-                MotionEvent.ACTION_UP -> {
-                    val targetX = if (layoutParams.x + bubbleWidth / 2 < screenWidth / 2) 0 else screenWidth - bubbleWidth
-                    val anim = ValueAnimator.ofInt(layoutParams.x, targetX)
-                    anim.addUpdateListener { valueAnimator ->
-                        layoutParams.x = valueAnimator.animatedValue as Int
-                        windowManager.updateViewLayout(v, layoutParams)
+                    if (!isDragging && (System.currentTimeMillis() - downTime) >= dragThreshold) {
+                        isDragging = true
                     }
-                    anim.duration = 50
-                    anim.start()
 
-                    v?.performClick()
+                    if (isDragging) {
+                        layoutParams.x = (initialX + (event.rawX - touchX)).toInt()
+                            .coerceIn(0, screenWidth - bubbleWidth)
+                        layoutParams.y = (initialY + (event.rawY - touchY)).toInt()
+                            .coerceIn(0, screenHeight - bubbleHeight)
+                        windowManager.updateViewLayout(bubbleView, layoutParams)
+                    }
                     return true
                 }
 
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val holdTime = System.currentTimeMillis() - downTime
+                    if (!isDragging && holdTime < dragThreshold) {
+                        val ctx = bubbleView.context
+                        val intent = Intent(ctx, MainActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        }
+                        ctx.startActivity(intent)
+                    } else {
+                        val targetX = if (layoutParams.x + bubbleWidth / 2 < screenWidth / 2) {
+                            0
+                        } else {
+                            screenWidth - bubbleWidth
+                        }
+                        val anim = ValueAnimator.ofInt(layoutParams.x, targetX)
+                        anim.addUpdateListener { valueAnimator ->
+                            layoutParams.x = valueAnimator.animatedValue as Int
+                            windowManager.updateViewLayout(bubbleView, layoutParams)
+                        }
+                        anim.duration = 150
+                        anim.start()
+                        saveBubblePosition(bubbleView.context, targetX, layoutParams.y)
+                    }
+                    return true
+                }
             }
             return false
         }
