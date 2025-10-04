@@ -20,7 +20,7 @@
             android:id="@+id/bubbleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="It's been 2 hours. Please don't forget to take a breakaaaaaaaaa."
+            android:text="It's been 2 hours. Please don't forget to take a break."
             android:maxWidth="300dp"
             android:textColor="#FFFFFF"
             android:background="@drawable/rounded_black_bg"
