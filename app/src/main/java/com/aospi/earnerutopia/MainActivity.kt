@@ -1,10 +1,14 @@
 package com.aospi.earnerutopia
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -18,9 +22,29 @@ enum class EarnerUtopia() {
 }
 
 class MainActivity : ComponentActivity() {
+
+    private val overlayPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (Settings.canDrawOverlays(this)) {
+                startBubbleService()
+            } else {
+                Log.d("print", "Overlay permission is required",)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            overlayPermissionLauncher.launch(intent)
+        } else {
+            startBubbleService()
+        }
 
 //        val db = DatabaseHelper.openDatabase(this, "database.db")
 //        val cursor = db.rawQuery("SELECT earner_id, rating FROM earners", null)
@@ -44,4 +68,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun startBubbleService() {
+        val intent = Intent(this, BubbleService::class.java)
+        startService(intent)
+    }
+
 }

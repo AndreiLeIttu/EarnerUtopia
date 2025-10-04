@@ -1,0 +1,30 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:id="@+id/bubbleContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/bubbleIcon"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/circle_blue"
+            android:contentDescription="Bubble" />
+
+        <TextView
+            android:id="@+id/bubbleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="It's been 2 hours. Please don't forget to take a breakaaaaaaaaa."
+            android:maxWidth="300dp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/rounded_black_bg"
+            android:visibility="gone"
+            android:layout_marginStart="10dp"/>
+    </LinearLayout>
+</FrameLayout>
