@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatter
 private val timeFmtShow = DateTimeFormatter.ofPattern("H:mm")
 
 @Composable
-fun TimelineRow(index: Int, step: PlanStep, isLast: Boolean) {
+fun TimelineRow(index: Int, step: Pair<Int,Int>, isLast: Boolean) {
     Row(Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
         Box(Modifier.width(32.dp).fillMaxHeight()) {
             Box(
@@ -51,7 +51,7 @@ fun TimelineRow(index: Int, step: PlanStep, isLast: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                "${step.start.format(timeFmtShow)} - ${step.end.format(timeFmtShow)}",
+                "${step.first} - ${step.second}",
                 fontSize = 20.sp,
                 fontFamily = Uber,
                 fontWeight = FontWeight.Normal

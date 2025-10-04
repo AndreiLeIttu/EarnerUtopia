@@ -13,7 +13,7 @@ import com.aospi.earnerutopia.model.PlanStep
 import com.aospi.earnerutopia.ui.theme.Uber
 
 @Composable
-fun RecommendedPlan(title: String, steps: List<PlanStep>, modifier: Modifier = Modifier) {
+fun RecommendedPlan(title: String, steps: List<Pair<Int,Int>>, modifier: Modifier = Modifier) {
     Column(modifier.padding(horizontal = 16.dp)) {
         Text(
             title,

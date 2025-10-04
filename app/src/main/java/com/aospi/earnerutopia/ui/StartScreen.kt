@@ -6,16 +6,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.aospi.earnerutopia.EarnerUtopia
 import com.aospi.earnerutopia.ui.theme.Uber
+import kotlinx.coroutines.delay
 
 @Composable
 fun StartScreen(
     modifier: Modifier = Modifier,
-    onNextButtonClicked: () -> Unit,
     name: String,
+    navController: NavController
 ) {
     Column(
         modifier = modifier.fillMaxWidth().fillMaxHeight(),
@@ -35,8 +39,13 @@ fun StartScreen(
             text = "Are you ready for a new day?",
             fontSize = 30.sp,
         )
-        Button(onClick = onNextButtonClicked) {
-            Text("Go to plan")
+    }
+
+
+    LaunchedEffect(Unit) {
+        delay(2000)
+        navController.navigate(route = EarnerUtopia.Schedule.name) {
+            popUpTo(route = EarnerUtopia.Start.name) { inclusive = true }
         }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
@@ -21,16 +22,23 @@ import androidx.compose.ui.unit.sp
 import com.aospi.earnerutopia.model.PlanStep
 import com.aospi.earnerutopia.ui.components.RecommendedPlan
 import com.aospi.earnerutopia.ui.theme.Uber
+import com.aospi.earnerutopia.viewmodel.ScheduleViewModel
 import java.time.LocalTime
 
 @Composable
-fun PlanScreen(modifier: Modifier = Modifier, onStart: () -> Unit = {}) {
-    val steps = listOf(
-        PlanStep(LocalTime.of(9, 0), LocalTime.of(10, 0), "Drive"),
-        PlanStep(LocalTime.of(10, 0), LocalTime.of(11, 0), "Break"),
-        PlanStep(LocalTime.of(11, 0), LocalTime.of(12, 0), "Drive"),
-        PlanStep(LocalTime.of(11, 0), LocalTime.of(12, 0), "Break")
-    )
+fun PlanScreen(modifier: Modifier = Modifier, onStart: () -> Unit = {}, viewModel: ScheduleViewModel) {
+    val steps by viewModel.steps.collectAsState()
+    val actualSteps = mutableListOf<Int>()
+    for (step in steps) {
+        if (step.second>step.first+1) {
+            for (i in step.first..<step.second) {
+                actualSteps.add(i)
+            }
+        } else
+            actualSteps.add(step.first)
+    }
+    print(actualSteps)
+
 
     Box(modifier.fillMaxSize()) {
         RecommendedPlan(
