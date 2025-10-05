@@ -43,4 +43,4 @@ for filename in os.listdir(input_dir):
 
 print("All images converted to grayscale!")
 print("prezic cica")
-print(model.predict(os.path.join(DATASET_PATH, 'test/Non drowsy'))[5 ].probs)
+print(model.predict(os.path.join(DATASET_PATH, 'test/Non drowsy'))[5 ].probs.data[1]-0.5)

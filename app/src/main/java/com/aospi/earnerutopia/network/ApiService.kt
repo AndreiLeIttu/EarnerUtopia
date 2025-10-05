@@ -9,6 +9,10 @@ data class OptimizeRequest(
     val available_hours: List<Int>
 )
 
+data class Barray(
+    val bytes: ByteArray
+)
+
 // The response model (same shape as your Python schedule output)
 data class ScheduleItem(
     val hour: Int?,
@@ -24,6 +28,6 @@ interface ApiService {
 
     @POST("/checkDrowsy")
     suspend fun checkDrowsy(
-        @Body request: ByteArray
+        @Body request: Barray
     ): Response<Boolean>
 }
