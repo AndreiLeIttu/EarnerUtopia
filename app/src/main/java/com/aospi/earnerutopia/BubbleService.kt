@@ -29,6 +29,9 @@ import kotlinx.coroutines.*
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 
 class BubbleService : Service() {
@@ -38,26 +41,83 @@ class BubbleService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val weatherApi = WeatherClient.api
     private var showMessage = false
-    private val breakTimeoutSeconds = 7200L
-    private val breakDurationSeconds = 30L
-    private val weatherCheckTimeoutSeconds = 3600L
-    private val weatherWarningSeconds = 30L
-    private var serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val breakTimeoutSeconds = 5L
+    private val breakDurationSeconds = 2L
+    private val weatherCheckTimeoutSeconds = 5L
+    private val weatherWarningSeconds = 3L
     private val badWeatherKeywords = listOf("Heavy", "Thunderstorm", "Snow", "Drizzle", "Extreme", "Freezing", "Very", "Smoke", "Fog", "Volcanic")
     private val API_KEY = BuildConfig.OPENWEATHER_API_KEY
+    private lateinit var bubbleParams: WindowManager.LayoutParams
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun attachBubbleView(params: WindowManager.LayoutParams) {
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        if (!Settings.canDrawOverlays(this)) {
+            Log.e("BubbleService", "Overlay permission missing, requesting...")
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            return
+        }
+
+        Handler(Looper.getMainLooper()).post {
+            try {
+                if (!::bubbleView.isInitialized) {
+                    bubbleView = LayoutInflater.from(this).inflate(R.layout.bubble_layout, null)
+                }
+
+                if (!bubbleView.isAttachedToWindow) {
+                    wm.addView(bubbleView, params)
+                    Log.d("BubbleService", "BubbleView attached")
+                } else {
+                    Log.d("BubbleService", "BubbleView already attached")
+                }
+            } catch (e: Exception) {
+                Log.e("BubbleService", "Failed to attach bubbleView: ${e.message}")
+            }
+        }
+    }
+
+    private fun showBubblePopup(params: WindowManager.LayoutParams, text: String, durationSeconds: Long) {
+        if (!::bubbleView.isInitialized || !bubbleView.isAttachedToWindow) return
+
+        val bubbleText = bubbleView.findViewById<TextView>(R.id.bubbleText)
+        val bubbleContainer = bubbleView.findViewById<LinearLayout>(R.id.bubbleContainer)
+        val bubbleIcon = bubbleView.findViewById<ImageView>(R.id.bubbleIcon)
+        val screenWidth = Resources.getSystem().displayMetrics.widthPixels
+
+        bubbleContainer.removeView(bubbleText)
+        val textParams = bubbleText.layoutParams as LinearLayout.LayoutParams
+        val bubbleCenter = params.x + bubbleIcon.width / 2
+        if (bubbleCenter < screenWidth / 2) {
+            bubbleContainer.addView(bubbleText)
+            textParams.marginStart = 10
+            textParams.marginEnd = 0
+            bubbleText.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+        } else {
+            bubbleContainer.addView(bubbleText, 0)
+            textParams.marginStart = 0
+            textParams.marginEnd = 10
+            bubbleText.textAlignment = View.TEXT_ALIGNMENT_VIEW_END
+        }
+        bubbleText.layoutParams = textParams
+
+        bubbleText.text = text
+        bubbleText.visibility = View.VISIBLE
+
+        handler.postDelayed({
+            bubbleText.visibility = View.GONE
+        }, durationSeconds * 1000)
+    }
+
     override fun onCreate() {
         super.onCreate()
-        startAsForeground()
-        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val metrics = Resources.getSystem().displayMetrics
-        val screenWidth = metrics.widthPixels
-
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -70,9 +130,28 @@ class BubbleService : Service() {
         val (lastX, lastY) = getSavedBubblePosition()
         params.x = lastX
         params.y = lastY
-
         bubbleView = LayoutInflater.from(this).inflate(R.layout.bubble_layout, null)
-        windowManager.addView(bubbleView, params)
+
+        if (!bubbleView.isAttachedToWindow) {
+            windowManager.addView(bubbleView, params)
+        }
+
+        bubbleParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+        bubbleParams.gravity = Gravity.TOP or Gravity.START
+        bubbleParams.x = lastX
+        bubbleParams.y = lastY
+        attachBubbleView(bubbleParams)
+
+        startAsForeground()
+
+        val metrics = Resources.getSystem().displayMetrics
+        val screenWidth = metrics.widthPixels
 
         val bubbleContainer = bubbleView.findViewById<LinearLayout>(R.id.bubbleContainer)
         val bubbleIcon = bubbleView.findViewById<ImageView>(R.id.bubbleIcon)
@@ -102,21 +181,8 @@ class BubbleService : Service() {
 
         handler.post(object : Runnable {
             override fun run() {
-                if (::bubbleView.isInitialized && bubbleView.isAttachedToWindow) {
-                    showTextPopup()
-                    handler.postDelayed({
-                        bubbleText.visibility = View.GONE
-
-                        val bubbleWidth = bubbleIcon.width
-                        if (params.x != 0 && params.x != screenWidth - bubbleWidth) {
-                            params.x = if (params.x + bubbleWidth / 2 < screenWidth / 2) 0
-                            else screenWidth - bubbleWidth
-                            windowManager.updateViewLayout(bubbleView, params)
-                        }
-                    }, breakDurationSeconds * 1000)
-
-                    handler.postDelayed(this, breakTimeoutSeconds * 1000)
-                }
+                showBubblePopup(params, "Time for a break!", breakDurationSeconds)
+                handler.postDelayed(this, breakTimeoutSeconds * 1000)
             }
         })
 
@@ -162,7 +228,6 @@ class BubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        serviceScope.cancel()
         handler.removeCallbacksAndMessages(null)
         if (::bubbleView.isInitialized) windowManager.removeView(bubbleView)
     }
@@ -287,14 +352,22 @@ class BubbleService : Service() {
     }
 
     private fun updateBubbleText(text: String) {
+
+        if (!::bubbleView.isInitialized) {
+            Log.d("BubbleService", "Bubble not attached, cannot show text $text")
+            return
+        }
         val bubbleText = bubbleView.findViewById<TextView>(R.id.bubbleText)
+        bubbleText.bringToFront()
+        if (::bubbleView.isInitialized && bubbleView.isAttachedToWindow) {
+            Log.d("BubbleService", "Bubble is attached, updating text")
+        } else {
+            Log.d("BubbleService", "Bubble NOT attached, cannot show text")
+        }
         bubbleText.post {
-            if (text.isNotEmpty()) {
-                bubbleText.text = text
-                //bubbleText.visibility = View.VISIBLE
-            } else {
-                bubbleText.visibility = View.GONE
-            }
+            bubbleText.text = text
+            bubbleText.visibility = if (text.isNotEmpty()) View.VISIBLE else View.GONE
+            Log.d("BubbleService", "Showing text: $text")
         }
     }
 
@@ -320,6 +393,7 @@ class BubbleService : Service() {
     private fun startWeatherChecks(lat: Double, lon: Double) {
         handler.post(object : Runnable {
             override fun run() {
+                /*
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val response = weatherApi.getHourlyForecast(
@@ -350,7 +424,41 @@ class BubbleService : Service() {
                         Log.e("BubbleService", "Weather fetch failed: ${e.message}")
                     }
                 }
+                */
+                // ---- REPLACE API CALL WITH HARDCODED TEST ----
+                data class WeatherInfo(val main: String, val description: String)
+                data class HourlyWeather(val weather: List<WeatherInfo>)
+                val nextHours = listOf(
+                    HourlyWeather(listOf(WeatherInfo("heavy", "Heavy rain coming"))),  // lowercase
+                    HourlyWeather(listOf(WeatherInfo("CLEAR", "Sunny skies")))          // uppercase
+                )
+                /*
+                val warning = nextHours.find { hour ->
+                    hour.weather.any { it.main.lowercase() in badWeatherKeywords.map { kw -> kw.lowercase() } }
+                }
 
+                if (warning != null) {
+                    val desc = warning.weather[0].description
+                    handler.postDelayed({
+                        updateBubbleText("Bad weather alert: $desc")
+
+                        handler.postDelayed({
+                            updateBubbleText("")
+                        }, weatherWarningSeconds * 1000)
+                    }, 3000)
+                } else {
+                    updateBubbleText("")
+                }
+
+                handler.postDelayed(this, weatherCheckTimeoutSeconds * 1000L)
+
+                 */
+                val warning = nextHours.find { hour ->
+                    hour.weather.any { it.main.lowercase() in badWeatherKeywords.map { kw -> kw.lowercase() } }
+                }
+                warning?.let {
+                    showBubblePopup(bubbleParams, "Bad weather alert: ${it.weather[0].description}", weatherWarningSeconds)
+                }
                 handler.postDelayed(this, weatherCheckTimeoutSeconds * 1000L)
             }
         })
