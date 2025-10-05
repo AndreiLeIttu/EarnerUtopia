@@ -13,7 +13,7 @@
             android:id="@+id/bubbleIcon"
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:background="@drawable/circle_blue"
+            android:src="@mipmap/ic_launcher_round"
             android:contentDescription="Bubble" />
 
         <TextView

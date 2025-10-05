@@ -42,10 +42,10 @@ class BubbleService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val weatherApi = WeatherClient.api
     private var showMessage = false
-    private val breakTimeoutSeconds = 5L
-    private val breakDurationSeconds = 2L
-    private val weatherCheckTimeoutSeconds = 5L
-    private val weatherWarningSeconds = 3L
+    private val breakTimeoutSeconds = 60L
+    private val breakDurationSeconds = 5L
+    private val weatherCheckTimeoutSeconds = 120L
+    private val weatherWarningSeconds = 5L
     private val badWeatherKeywords = listOf("Heavy", "Thunderstorm", "Snow", "Drizzle", "Extreme", "Freezing", "Very", "Smoke", "Fog", "Volcanic")
     private val API_KEY = BuildConfig.OPENWEATHER_API_KEY
     private lateinit var bubbleParams: WindowManager.LayoutParams
@@ -182,7 +182,7 @@ class BubbleService : Service() {
 
         handler.post(object : Runnable {
             override fun run() {
-                showBubblePopup(params, "Time for a break!", breakDurationSeconds)
+                showBubblePopup(params, "It's been 2 hours. Please don't forget to take a break.", breakDurationSeconds)
                 handler.postDelayed(this, breakTimeoutSeconds * 1000)
             }
         })
