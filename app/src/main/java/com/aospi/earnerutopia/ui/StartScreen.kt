@@ -7,6 +7,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -14,6 +15,7 @@ import androidx.navigation.NavController
 import com.aospi.earnerutopia.EarnerUtopia
 import com.aospi.earnerutopia.ui.theme.Uber
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun StartScreen(
@@ -22,6 +24,8 @@ fun StartScreen(
     onOpenCamera: () -> Unit = {},
     navController: NavController
 ) {
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = modifier.fillMaxWidth().fillMaxHeight(),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
@@ -40,15 +44,23 @@ fun StartScreen(
             text = "Are you ready for a new day?",
             fontSize = 30.sp,
         )
-    }
 
-    LaunchedEffect(Unit) {
-        delay(2000)
-        navController.navigate(route = EarnerUtopia.Schedule.name) {
-            popUpTo(route = EarnerUtopia.Start.name) { inclusive = true }
+        Button(onClick = {
+            scope.launch{onOpenCamera()
+            delay(10000)}
+            navController.navigate(route = EarnerUtopia.Schedule.name) {
+                popUpTo(route = EarnerUtopia.Start.name) { inclusive = true }
+            }
+        }) {
+            Text("Open camera")
         }
     }
-    Button(onClick = onOpenCamera) {
-        Text("Open camera")
-    }
+
+
+//    LaunchedEffect(Unit) {
+//        delay(2000)
+//        navController.navigate(route = EarnerUtopia.Schedule.name) {
+//            popUpTo(route = EarnerUtopia.Start.name) { inclusive = true }
+//        }
+//    }
 }

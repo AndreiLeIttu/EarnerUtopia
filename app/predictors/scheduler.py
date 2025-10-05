@@ -105,6 +105,85 @@ def prediction_per_hour(driver_id, city_id, date,
 
     return hours_df
 
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_squared_error
+import pandas as pd
+import numpy as np
+
+def prediction_per_hour_courier(driver_id, city_id, date,
+                                courier_trips,
+                                surge_by_hour,
+                                max_continuous_hours=3,
+                                max_shift_hours=6,
+                                break_minutes=15,
+                                meal_minutes=30):
+    """
+    Predict hourly earnings for courier activity using historical courier trips.
+
+    Parameters:
+        driver_id: str
+        city_id: int
+        date: str, 'YYYY-MM-DD'
+        courier_trips: pd.DataFrame with columns ['start_time','net_earnings','city_id']
+        surge_by_hour: pd.DataFrame with columns ['city_id','hour','surge_multiplier']
+
+    Returns:
+        pd.DataFrame with columns ['hour', 'predicted_courier']
+    """
+
+    trips_df = courier_trips[courier_trips['city_id'] == city_id].copy()
+    trips_df['start_time'] = pd.to_datetime(trips_df['start_time'])
+    trips_df['hour'] = trips_df['start_time'].dt.hour
+    trips_df['weekday'] = trips_df['start_time'].dt.weekday
+    trips_df.sort_values('start_time', inplace=True)
+
+    # Rolling mean of net earnings
+    trips_df['rolling_earnings'] = trips_df['net_earnings'].rolling(window=50, min_periods=1).mean()
+
+    # Circular encoding
+    trips_df['hour_sin'] = np.sin(2 * np.pi * trips_df['hour'] / 24)
+    trips_df['hour_cos'] = np.cos(2 * np.pi * trips_df['hour'] / 24)
+    trips_df['weekday_sin'] = np.sin(2 * np.pi * trips_df['weekday'] / 7)
+    trips_df['weekday_cos'] = np.cos(2 * np.pi * trips_df['weekday'] / 7)
+
+    # Merge surge multiplier
+    surge_city = surge_by_hour[surge_by_hour['city_id'] == city_id][['hour','surge_multiplier']]
+    trips_df = trips_df.merge(surge_city, on='hour', how='left')
+    trips_df['surge_multiplier'] = trips_df['surge_multiplier'].fillna(1.0)
+
+    # Features and target
+    X = trips_df[['hour_sin','hour_cos','weekday_sin','weekday_cos','rolling_earnings','surge_multiplier']]
+    y = trips_df['net_earnings']/trips_df['duration_mins']*60
+
+    # Train model
+    model = XGBRegressor()
+    model.fit(X, y)
+    print(np.mean((model.predict(X)-y)**2))
+
+    # Prepare prediction DataFrame
+    target_date = pd.to_datetime(date)
+    weekday = target_date.weekday()
+    hours_df = pd.DataFrame({'hour': range(24)})
+    hours_df['weekday'] = weekday
+    hours_df['hour_sin'] = np.sin(2 * np.pi * hours_df['hour'] / 24)
+    hours_df['hour_cos'] = np.cos(2 * np.pi * hours_df['hour'] / 24)
+    hours_df['weekday_sin'] = np.sin(2 * np.pi * hours_df['weekday'] / 7)
+    hours_df['weekday_cos'] = np.cos(2 * np.pi * hours_df['weekday'] / 7)
+
+    # Rolling earnings = mean of historical courier earnings
+    rolling_mean = trips_df['rolling_earnings'].mean()
+    hours_df['rolling_earnings'] = rolling_mean
+
+    # Merge surge
+    hours_df = hours_df.merge(surge_city, on='hour', how='left')
+    hours_df['surge_multiplier'] = hours_df['surge_multiplier'].fillna(1.0)
+
+    # Predict hourly earnings
+    feature_cols = ['hour_sin','hour_cos','weekday_sin','weekday_cos','rolling_earnings','surge_multiplier']
+    hours_df['predicted_courier'] = model.predict(hours_df[feature_cols])
+
+    return hours_df[['hour','predicted_courier']]
+
 import pandas as pd
 
 def build_driver_schedule_from_availability(hourly_predictions,
@@ -180,83 +259,68 @@ def load_uber_mock_data(path_pattern='uber_hackathon_v2_mock_data_*.csv'):
 import pulp
 import pandas as pd
 
-def optimize_schedule_avoid_breaks_in_high_hours(hourly_predictions,
-                                                  available_hours,
-                                                  max_consecutive=2,
-                                                  break_penalty_factor=0.5,
-                                                  total_hours_limit=None):
-    """
-    Optimize schedule to maximize earnings while penalizing breaks during high-earning hours.
 
-    Parameters
-    ----------
-    hourly_predictions : pd.DataFrame
-        DataFrame with columns ['hour','predicted_earnings'] for hours 0..23 (or subset).
-    available_hours : list[int]
-        Hours the driver is available (e.g., [8,9,10,11,12,13])
-    max_consecutive : int
-        Max number of consecutive driving hours allowed (forces at least one break in any block of length max_consecutive+1).
-    break_penalty_factor : float
-        Weight for penalizing breaks in productive hours (β). Larger => stronger preference to avoid breaks in high-value hours.
-    total_hours_limit : int or None
-        If set, the solver will limit the total driving hours to this number.
+def optimize_schedule_driver_or_courier(hourly_predictions, courier_predictions, available_hours,
+                                        max_consecutive=2,
+                                        break_penalty_factor=0.5,
+                                        total_hours_limit=None):
+    import pulp
 
-    Returns
-    -------
-    pd.DataFrame
-        schedule with columns ['hour','activity','predicted_earnings'] in the order of available_hours and inserted breaks (hours with activity 'Break').
-    """
-
-    # Ensure available_hours sorted (use chronological order)
     avail = sorted(available_hours)
 
-    # Map predicted earnings to hours (use 0 if missing)
-    pred_map = hourly_predictions.set_index('hour')['predicted_earnings'].to_dict()
-    pred = {h: float(pred_map.get(h, 0.0)) for h in avail}
+    # Predicted earnings for each activity
+    pred_drive = hourly_predictions.set_index('hour')['predicted_earnings'].to_dict()
+    pred_deliver = courier_predictions.set_index('hour')['predicted_courier'].to_dict()
 
-    # Problem
-    model = pulp.LpProblem("DriverScheduleAvoidBreaksInHighHours", pulp.LpMaximize)
+    # Decision variables: x_drive, x_deliver (binary)
+    model = pulp.LpProblem("DriverCourierSchedule", pulp.LpMaximize)
+    x_drive = {h: pulp.LpVariable(f"x_drive_{h}", cat="Binary") for h in avail}
+    x_deliver = {h: pulp.LpVariable(f"x_deliver_{h}", cat="Binary") for h in avail}
 
-    # Decision variables: x_h = 1 if driving in hour h, 0 if break
-    x = {h: pulp.LpVariable(f"x_{h}", cat="Binary") for h in avail}
+    # Each hour: at most one activity
+    for h in avail:
+        model += x_drive[h] + x_deliver[h] <= 1
 
-    # Objective:
-    # max Σ pred[h]*x[h] - beta * Σ pred[h] * (1 - x[h])
-    # = max Σ pred[h]*x[h] - beta * (Σ pred[h] - Σ pred[h]*x[h])
-    # constant term -beta*Σpred ignored; equivalently:
-    # max Σ ((1 + beta) * pred[h]) * x[h]  (ignoring constant)
-    # but we'll write it explicitly for clarity:
-    model += pulp.lpSum(pred[h] * x[h] for h in avail) - break_penalty_factor * pulp.lpSum(pred[h] * (1 - x[h]) for h in avail)
+    # Objective: maximize earnings minus break penalties
+    model += pulp.lpSum(
+        pred_drive[h] * x_drive[h] + (pred_deliver[h]) * x_deliver[h] - break_penalty_factor * (
+                    1 - (x_drive[h] + x_deliver[h])) * max(pred_drive[h], pred_deliver[h])
+        for h in avail
+    )
 
-    # Constraint: at most total_hours_limit driving hours (if provided)
-    if total_hours_limit is not None:
-        model += pulp.lpSum(x[h] for h in avail) <= total_hours_limit
-
-    # Constraint: in any sliding block of length (max_consecutive + 1),
-    # at most max_consecutive can be driving => ensures at least one break
-    # We must create sliding windows across the *chronological positions* in avail.
+    # Constraint: max consecutive driving/delivering hours
     n = len(avail)
     window = max_consecutive + 1
     if n >= window:
         for i in range(n - window + 1):
             block = avail[i:i + window]
-            model += pulp.lpSum(x[h] for h in block) <= max_consecutive
+            model += pulp.lpSum(x_drive[h] + x_deliver[h] for h in block) <= max_consecutive
+
+    # Constraint: total working hours
+    if total_hours_limit is not None:
+        model += pulp.lpSum(x_drive[h] + x_deliver[h] for h in avail) <= total_hours_limit
 
     # Solve
-    solver = pulp.PULP_CBC_CMD(msg=False)  # silent solve; set msg=True to debug
+    solver = pulp.PULP_CBC_CMD(msg=False)
     model.solve(solver)
 
-    # Build schedule: iterate through avail hours in chronological order
+    # Build schedule
     schedule = []
     for h in avail:
-        val = pulp.value(x[h])
-        activity = "Drive" if val >= 0.5 else "Break"
-        earning = pred[h] if activity == "Drive" else 0.0
+        drive_val = pulp.value(x_drive[h])
+        deliver_val = pulp.value(x_deliver[h])
+        if drive_val >= 0.5:
+            activity = "Drive"
+            earning = pred_drive[h]
+        elif deliver_val >= 0.5:
+            activity = "Deliver"
+            earning = pred_deliver[h]
+        else:
+            activity = "Break"
+            earning = 0.0
         schedule.append({'hour': h, 'activity': activity, 'predicted_earnings': round(earning, 2)})
 
     return pd.DataFrame(schedule)
-
-
 
 
 # Load all tables
@@ -266,25 +330,28 @@ tables = load_uber_mock_data()
 # # Filter trips for city
 #
 #
-# hourly_predictions = prediction_per_hour(
-#     driver_id='E10111',
-#     city_id=3,
-#     date='2023-01-13',
-#     rides_trips=tables['rides_trips'],
-#     surge_by_hour=tables['surge_by_hour'],
-#     cancellation_rates=tables['cancellation_rates'],
-#     riders=tables['riders'],
-#     heatmap=tables.get('heatmap', None)
-# )
+hourly_predictions = prediction_per_hour(
+    driver_id='E10111',
+    city_id=3,
+    date='2023-01-13',
+    rides_trips=tables['rides_trips'],
+    surge_by_hour=tables['surge_by_hour'],
+    cancellation_rates=tables['cancellation_rates'],
+    riders=tables['riders'],
+    heatmap=tables.get('heatmap', None)
+)
+hourly_predictions_courier = prediction_per_hour_courier(driver_id='E10111', city_id=3, date='2023-01-13',courier_trips=tables['eats_orders'],surge_by_hour=tables['surge_by_hour'],)
 #
 #
 #
-# available_hours = list(range(8, 20))  # 8:00-19:00
+print(hourly_predictions_courier)
+available_hours = list(range(8, 20))  # 8:00-19:00
+schedule = optimize_schedule_driver_or_courier(hourly_predictions, hourly_predictions_courier, available_hours)
 # schedule_df = optimize_schedule_avoid_breaks_in_high_hours(hourly_predictions,
 #                                                                available_hours,
 #                                                                max_consecutive=2,
 #                                                                break_penalty_factor=0.6,
 #                                                                total_hours_limit=8)
-# print(schedule_df)
+print(schedule)
 #
 
