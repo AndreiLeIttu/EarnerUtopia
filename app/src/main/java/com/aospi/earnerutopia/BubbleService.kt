@@ -34,6 +34,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 
+
 class BubbleService : Service() {
 
     private lateinit var windowManager: WindowManager
@@ -219,7 +220,6 @@ class BubbleService : Service() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Bubble active")
             .setContentText("Needed for weather updates and reminders while you work")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
             .build()
 
