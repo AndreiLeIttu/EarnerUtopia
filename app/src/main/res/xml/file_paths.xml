@@ -1,0 +1,4 @@
+<paths>
+    <!-- Allow sharing a temp image created in cacheDir -->
+    <cache-path name="cache" path="." />
+</paths>

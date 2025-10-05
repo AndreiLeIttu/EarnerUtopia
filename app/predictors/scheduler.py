@@ -260,31 +260,31 @@ def optimize_schedule_avoid_breaks_in_high_hours(hourly_predictions,
 
 
 # Load all tables
-
+#
 tables = load_uber_mock_data()
-
-# Filter trips for city
-
-
-hourly_predictions = prediction_per_hour(
-    driver_id='E10111',
-    city_id=3,
-    date='2023-01-13',
-    rides_trips=tables['rides_trips'],
-    surge_by_hour=tables['surge_by_hour'],
-    cancellation_rates=tables['cancellation_rates'],
-    riders=tables['riders'],
-    heatmap=tables.get('heatmap', None)
-)
-
-
-
-available_hours = list(range(8, 20))  # 8:00-19:00
-schedule_df = optimize_schedule_avoid_breaks_in_high_hours(hourly_predictions,
-                                                               available_hours,
-                                                               max_consecutive=2,
-                                                               break_penalty_factor=0.6,
-                                                               total_hours_limit=8)
-print(schedule_df)
-
+#
+# # Filter trips for city
+#
+#
+# hourly_predictions = prediction_per_hour(
+#     driver_id='E10111',
+#     city_id=3,
+#     date='2023-01-13',
+#     rides_trips=tables['rides_trips'],
+#     surge_by_hour=tables['surge_by_hour'],
+#     cancellation_rates=tables['cancellation_rates'],
+#     riders=tables['riders'],
+#     heatmap=tables.get('heatmap', None)
+# )
+#
+#
+#
+# available_hours = list(range(8, 20))  # 8:00-19:00
+# schedule_df = optimize_schedule_avoid_breaks_in_high_hours(hourly_predictions,
+#                                                                available_hours,
+#                                                                max_consecutive=2,
+#                                                                break_penalty_factor=0.6,
+#                                                                total_hours_limit=8)
+# print(schedule_df)
+#
 
