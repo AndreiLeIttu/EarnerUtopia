@@ -42,14 +42,13 @@ fun StartScreen(
         )
     }
 
-
     LaunchedEffect(Unit) {
         delay(2000)
         navController.navigate(route = EarnerUtopia.Schedule.name) {
             popUpTo(route = EarnerUtopia.Start.name) { inclusive = true }
         }
-        Button(onClick = onOpenCamera) {
-            Text("Open camera")
-        }
+    }
+    Button(onClick = onOpenCamera) {
+        Text("Open camera")
     }
 }
