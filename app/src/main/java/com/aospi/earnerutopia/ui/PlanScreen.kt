@@ -51,7 +51,7 @@ fun PlanScreen(modifier: Modifier = Modifier, onStart: () -> Unit = {}, viewMode
     var flag = false;
     for(i in 1..<steps.size) {
         var x = steps[i]
-        if (flag && prev.second.equals(x.second) && prev.fourth.equals(x.first)){
+        if (flag && prev.second == x.second && prev.fourth.equals(x.first)){
             prev.fourth = x.first + 1
             steps.remove(x)
     } else prev = x
