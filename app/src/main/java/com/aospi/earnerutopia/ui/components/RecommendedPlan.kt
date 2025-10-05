@@ -9,11 +9,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aospi.earnerutopia.model.PlanStep
+import com.aospi.earnerutopia.ui.Quadruple
 import com.aospi.earnerutopia.ui.theme.Uber
 
 @Composable
-fun RecommendedPlan(title: String, steps: List<Pair<Int,Int>>, modifier: Modifier = Modifier) {
+fun RecommendedPlan(title: String, steps: MutableList<Quadruple<Int, String, Double, Int>>, modifier: Modifier = Modifier) {
     Column(modifier.padding(horizontal = 16.dp)) {
         Text(
             title,

@@ -6,7 +6,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.aospi.earnerutopia.network.ApiClient
+import android.util.Log
 import com.aospi.earnerutopia.viewmodel.ScheduleViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -15,7 +18,11 @@ fun ScheduleScreen(
     onNextButtonClicked: () -> Unit,
     viewModel: ScheduleViewModel
     ) {
-    val steps by viewModel.steps.collectAsState()
+    val scope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val steps = remember { mutableStateListOf<Pair<Int, Int>>() }
 
     // Dialog visibility control
     var showStartPicker by remember { mutableStateOf(false) }
@@ -68,7 +75,7 @@ fun ScheduleScreen(
                 Button(onClick = {
                     currentEnd = state.hour
                     showEndPicker = false
-                    viewModel.addStep(currentStart, currentEnd)
+                    steps.add(Pair(currentStart, currentEnd))
                 }) {
                     Text("Confirm selection")
                 }
@@ -81,8 +88,40 @@ fun ScheduleScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Button(onClick = onNextButtonClicked) {
-            Text("Go to plan")
-        }
+        Button(
+            onClick = {
+                val actualSteps = mutableListOf<Int>()
+                for ((start, end) in steps) {
+                    if (end > start + 1) {
+                        for (i in start..<end) actualSteps.add(i)
+                    } else {
+                        actualSteps.add(start)
+                    }
+                }
+
+                loading = true
+                errorMessage = null
+
+                scope.launch {
+                    try {
+                        val response = ApiClient.apiService.optimizeSchedule(
+                            com.aospi.earnerutopia.network.OptimizeRequest(actualSteps)
+                        )
+                        if (response.isSuccessful) {
+                            val result = response.body()
+                            viewModel.optimizedPlanJson = result
+                            onNextButtonClicked()
+                        } else {
+                            errorMessage = "Error: ${response.code()}"
+                            Log.d("error-message", errorMessage!!)
+                        }
+                    } catch (e: Exception) {
+                        errorMessage = "Failed: ${e.message}"
+                        Log.d("exception", errorMessage!!)
+                    } finally {
+                        loading = false
+                    }
+                }
+        }) {Text("Go to plan")}
     }
 }

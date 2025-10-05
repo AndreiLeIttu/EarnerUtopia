@@ -13,13 +13,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aospi.earnerutopia.model.PlanStep
+import com.aospi.earnerutopia.ui.Quadruple
 import com.aospi.earnerutopia.ui.theme.Uber
 import java.time.format.DateTimeFormatter
 
 private val timeFmtShow = DateTimeFormatter.ofPattern("H:mm")
 
 @Composable
-fun TimelineRow(index: Int, step: Pair<Int,Int>, isLast: Boolean) {
+fun TimelineRow(index: Int, step: Quadruple<Int, String, Double, Int>, isLast: Boolean) {
     Row(Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
         Box(Modifier.width(32.dp).fillMaxHeight()) {
             Box(
@@ -51,13 +52,13 @@ fun TimelineRow(index: Int, step: Pair<Int,Int>, isLast: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                "${step.first} - ${step.second}",
+                "${step.first}:00 - ${step.fourth}:00",
                 fontSize = 20.sp,
                 fontFamily = Uber,
                 fontWeight = FontWeight.Normal
             )
             Text(
-                step.title,
+                step.second,
                 fontSize = 24.sp,
                 fontFamily = Uber,
                 fontWeight = FontWeight.Normal,
