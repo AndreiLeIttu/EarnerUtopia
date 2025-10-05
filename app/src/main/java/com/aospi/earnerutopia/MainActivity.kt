@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startBubbleService() {
         val intent = Intent(this, BubbleService::class.java)
-        //startService(intent)
+        startService(intent)
     }
 
     private fun stopBubbleService() {
