@@ -1,5 +1,6 @@
 package com.aospi.earnerutopia
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import com.aospi.earnerutopia.ui.theme.EarnerUtopiaTheme
 
 enum class EarnerUtopia() {
@@ -24,11 +26,20 @@ enum class EarnerUtopia() {
 class MainActivity : ComponentActivity() {
 
     private val overlayPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { _ ->
             if (Settings.canDrawOverlays(this)) {
+                checkLocationPermission()
+            } else {
+                Log.d("MainActivity", "Overlay permission is required")
+            }
+        }
+
+    private val locationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
                 startBubbleService()
             } else {
-                Log.d("print", "Overlay permission is required",)
+                Log.d("MainActivity", "Location permission denied")
             }
         }
 
@@ -67,6 +78,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            overlayPermissionLauncher.launch(intent)
+        } else {
+            checkLocationPermission()
+        }
     }
 
     override fun onStart() {
@@ -77,13 +98,20 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         if (Settings.canDrawOverlays(this)) {
-            startBubbleService()
+            checkLocationPermission()
         } else {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
             )
             overlayPermissionLauncher.launch(intent)
+        }
+    }
+
+    private fun checkLocationPermission() {
+        when (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            android.content.pm.PackageManager.PERMISSION_GRANTED -> startBubbleService()
+            else -> locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
