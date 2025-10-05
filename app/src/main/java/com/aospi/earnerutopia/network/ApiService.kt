@@ -21,4 +21,9 @@ interface ApiService {
     suspend fun optimizeSchedule(
         @Body request: OptimizeRequest
     ): Response<List<ScheduleItem>>
+
+    @POST("/checkDrowsy")
+    suspend fun checkDrowsy(
+        @Body request: ByteArray
+    ): Response<Boolean>
 }

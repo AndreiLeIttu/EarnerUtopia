@@ -1,5 +1,6 @@
 package com.aospi.earnerutopia
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -11,6 +12,8 @@ import com.aospi.earnerutopia.ui.PlanScreen
 import com.aospi.earnerutopia.ui.ScheduleScreen
 import com.aospi.earnerutopia.ui.StartScreen
 import com.aospi.earnerutopia.viewmodel.ScheduleViewModel
+import com.aospi.earnerutopia.ui.camera.CameraXCaptureScreen
+
 
 @Composable
 fun EarnerUtopiaApp(
@@ -25,7 +28,11 @@ fun EarnerUtopiaApp(
         modifier = modifier,
     ) {
         composable(route = EarnerUtopia.Start.name) {
-            StartScreen(modifier, name, navController)
+            StartScreen(modifier = modifier,
+                name = name,
+                onOpenCamera = { navController.navigate("CaptureForModel") },
+                navController = navController
+            )
         }
         composable(route = EarnerUtopia.Plan.name) {
             PlanScreen(
@@ -37,6 +44,14 @@ fun EarnerUtopiaApp(
                 modifier,
                 onNextButtonClicked = {navController.navigate(EarnerUtopia.Plan.name)},
                 viewModel = scheduleViewModel)
+        }
+        composable(route = "CaptureForModel") {
+            CameraXCaptureScreen(
+                onPhotoBytes = { bytes ->{ Log.d("CameraX", "Captured pula} bytes")}
+                    // TODO: send to your model (upload/run)
+                },
+                onDone = { navController.popBackStack() }
+            )
         }
     }
 }

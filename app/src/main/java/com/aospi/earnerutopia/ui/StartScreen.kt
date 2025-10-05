@@ -19,6 +19,7 @@ import kotlinx.coroutines.delay
 fun StartScreen(
     modifier: Modifier = Modifier,
     name: String,
+    onOpenCamera: () -> Unit = {},
     navController: NavController
 ) {
     Column(
@@ -46,6 +47,9 @@ fun StartScreen(
         delay(2000)
         navController.navigate(route = EarnerUtopia.Schedule.name) {
             popUpTo(route = EarnerUtopia.Start.name) { inclusive = true }
+        }
+        Button(onClick = onOpenCamera) {
+            Text("Open camera")
         }
     }
 }
