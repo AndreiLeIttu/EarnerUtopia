@@ -43,8 +43,8 @@ class BubbleService : Service() {
     private val weatherApi = WeatherClient.api
     private var showMessage = false
     private val breakTimeoutSeconds = 60L
-    private val breakDurationSeconds = 5L
-    private val weatherCheckTimeoutSeconds = 120L
+    private val breakDurationSeconds = 1L
+    private val weatherCheckTimeoutSeconds = 5L
     private val weatherWarningSeconds = 5L
     private val badWeatherKeywords = listOf("Heavy", "Thunderstorm", "Snow", "Drizzle", "Extreme", "Freezing", "Very", "Smoke", "Fog", "Volcanic")
     private val API_KEY = BuildConfig.OPENWEATHER_API_KEY
