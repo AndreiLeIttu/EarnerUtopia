@@ -1,30 +1,42 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import List, Optional
+from flask import Flask, request, jsonify
 import pandas as pd
-from scheduler import optimize_schedule_avoid_breaks_in_high_hours  # import your existing function
+from scheduler import (
+    optimize_schedule_avoid_breaks_in_high_hours,
+    prediction_per_hour,
+    load_uber_mock_data,
+)
 
-app = FastAPI()
+app = Flask(__name__)
 
-class HourlyPrediction(BaseModel):
-    hour: int
-    predicted_earnings: float
+# Load data once
+tables = load_uber_mock_data()
+hourly_predictions = prediction_per_hour(
+    driver_id='E10111',
+    city_id=3,
+    date='2023-01-13',
+    rides_trips=tables['rides_trips'],
+    surge_by_hour=tables['surge_by_hour'],
+    cancellation_rates=tables['cancellation_rates'],
+    riders=tables['riders'],
+    heatmap=tables.get('heatmap', None)
+)
 
-class OptimizeRequest(BaseModel):
-    hourly_predictions: List[HourlyPrediction]
-    available_hours: List[int]
-    max_consecutive: int = 2
-    break_penalty_factor: float = 0.6
-    total_hours_limit: Optional[int] = 8
+@app.route('/optimize', methods=['POST'])
+def optimize():
+    data = request.get_json()
+    print("🚀 /optimize called with:", data)
 
-@app.post("/optimize")
-def optimize(req: OptimizeRequest):
-    df = pd.DataFrame([{"hour": h.hour, "predicted_earnings": h.predicted_earnings} for h in req.hourly_predictions])
+    available_hours = data.get('available_hours', [])
     schedule = optimize_schedule_avoid_breaks_in_high_hours(
-        hourly_predictions=df,
-        available_hours=req.available_hours,
-        max_consecutive=req.max_consecutive,
-        break_penalty_factor=req.break_penalty_factor,
-        total_hours_limit=req.total_hours_limit
+        hourly_predictions=hourly_predictions,
+        available_hours=available_hours,
+        max_consecutive=2,
+        break_penalty_factor=0.6,
+        total_hours_limit=8
     )
-    return schedule.to_dict(orient="records")
+
+    print("✅ Computed schedule.")
+    return jsonify(schedule.to_dict(orient="records"))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000, debug=True)
