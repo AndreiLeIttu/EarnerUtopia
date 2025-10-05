@@ -4,8 +4,9 @@ import os
 from ultralytics import YOLO
 import cv2
 from scheduler import (
-    optimize_schedule_avoid_breaks_in_high_hours,
+    optimize_schedule_driver_or_courier,
     prediction_per_hour,
+prediction_per_hour_courier,
     load_uber_mock_data,
 )
 
@@ -29,6 +30,7 @@ hourly_predictions = prediction_per_hour(
     riders=tables['riders'],
     heatmap=tables.get('heatmap', None)
 )
+hourly_predictions_courier = prediction_per_hour_courier(driver_id='E10111', city_id=3, date='2023-01-13',courier_trips=tables['eats_orders'],surge_by_hour=tables['surge_by_hour'],)
 
 @app.route('/optimize', methods=['POST'])
 def optimize():
@@ -36,8 +38,9 @@ def optimize():
     print("/optimize called with:", data)
 
     available_hours = data.get('available_hours', [])
-    schedule = optimize_schedule_avoid_breaks_in_high_hours(
+    schedule = optimize_schedule_driver_or_courier(
         hourly_predictions=hourly_predictions,
+        courier_predictions=hourly_predictions_courier,
         available_hours=available_hours,
         max_consecutive=2,
         break_penalty_factor=0.6,

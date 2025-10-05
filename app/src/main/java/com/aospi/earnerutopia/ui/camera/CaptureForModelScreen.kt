@@ -52,17 +52,14 @@ private fun captureToCacheAndReturnBytes(
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 val bytes = runCatching { file.readBytes() }.getOrNull()
                 runCatching { if (file.exists()) file.delete() }
-                Log.d("coaiele", ""+bytes)
                 if (bytes != null) onBytes(bytes)
                 if (bytes == null) return
 //                scope.launch {
 //                    try{
 //                        val response = ApiClient.apiService.checkDrowsy(bytes)
-//                        Log.d("dinamo",""+response.isSuccessful)
 //                        if (response.isSuccessful) {
 //                            val result = response.body()
 //                            //TODO view mdoel
-//                            Log.d("dinamo",""+response.body())
 //                        }
 //                    }  catch (e: Exception) {Log.d("Exception", e.message?:"")}
 //                }
