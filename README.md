@@ -18,3 +18,10 @@ driving, as well as suggestions to take cover in case of bad weather predictions
 # Future plan
 We are aiming to (hopefully) integrate our daily schedule planner as well as our floating widget into the Uber Driver app. In order to do so, we plan on creating an .apk file that would allow both users and developers
 to more easily get started with our companion. A current future step that we are working on is deploying the Python Flask service online, so that an individual .apk file may be ran on its own, without needing to start a server every time.
+
+# Walkthrough
+1. Once you open the app, you can see this screen, where you can choose to (or not) take a picture, so that your tiredness level is taken into account. ![no](images/first.png "Title")
+2. After waiting for a few seconds, for the first time of opening the application, you should see this screen where you can choose a preferred schedule for the day.![no](images/second.png "Title")
+3. After being content with your schedule, our model will provide an optimal plan for the day, taking into account both break, as well as driving and delivering orders. This is your plan for the day, which you may choose to either follow, or not!
+4. Once you exit the app, you should also be able to see a floating bubble that will sometimes send you notifications related to taking breaks or predictions of bad weather.
+![yes](images/third.jpg "noTitle")
