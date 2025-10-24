@@ -1,3 +1,5 @@
+<img width="1920" height="1080" alt="Slide 16_9 - 1" src="https://github.com/user-attachments/assets/b7d53859-8822-4874-ba9d-d2f864a7bdf0" />
+
 # Earner Utopia
 This is Earner Utopia, an Android App meant to be an extension to the existing Uber-Driver app that enhances Earners' experience by taking into account both the money-making and the wellness aspects.
 
